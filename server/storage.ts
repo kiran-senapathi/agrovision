@@ -1,6 +1,7 @@
 import { 
   type User, 
   type InsertUser,
+  type UpsertUser,
   type Farmer,
   type InsertFarmer,
   type CropDiagnosis,
@@ -10,14 +11,23 @@ import {
   type DiseaseAlert,
   type InsertDiseaseAlert,
   type AgriStore,
-  type InsertAgriStore
+  type InsertAgriStore,
+  users,
+  farmers,
+  cropDiagnoses,
+  weatherData,
+  diseaseAlerts,
+  agriStores
 } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>;
   
   getFarmer(id: string): Promise<Farmer | undefined>;
   createFarmer(farmer: InsertFarmer): Promise<Farmer>;
@@ -35,6 +45,131 @@ export interface IStorage {
   
   getAgriStores(location?: string): Promise<AgriStore[]>;
   createAgriStore(store: InsertAgriStore): Promise<AgriStore>;
+}
+
+export class DatabaseStorage implements IStorage {
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.githubId,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  async getFarmer(id: string): Promise<Farmer | undefined> {
+    const [farmer] = await db.select().from(farmers).where(eq(farmers.id, id));
+    return farmer;
+  }
+
+  async createFarmer(insertFarmer: InsertFarmer): Promise<Farmer> {
+    const [farmer] = await db
+      .insert(farmers)
+      .values(insertFarmer)
+      .returning();
+    return farmer;
+  }
+
+  async updateFarmer(id: string, updates: Partial<Farmer>): Promise<Farmer | undefined> {
+    const [farmer] = await db
+      .update(farmers)
+      .set(updates)
+      .where(eq(farmers.id, id))
+      .returning();
+    return farmer;
+  }
+
+  async getCropDiagnosis(id: string): Promise<CropDiagnosis | undefined> {
+    const [diagnosis] = await db.select().from(cropDiagnoses).where(eq(cropDiagnoses.id, id));
+    return diagnosis;
+  }
+
+  async getCropDiagnosesByFarmer(farmerId: string): Promise<CropDiagnosis[]> {
+    return await db.select().from(cropDiagnoses).where(eq(cropDiagnoses.farmerId, farmerId));
+  }
+
+  async createCropDiagnosis(insertDiagnosis: InsertCropDiagnosis): Promise<CropDiagnosis> {
+    const [diagnosis] = await db
+      .insert(cropDiagnoses)
+      .values(insertDiagnosis)
+      .returning();
+    return diagnosis;
+  }
+
+  async getWeatherData(location: string): Promise<WeatherData | undefined> {
+    const [weather] = await db.select().from(weatherData).where(eq(weatherData.location, location));
+    return weather;
+  }
+
+  async createOrUpdateWeatherData(insertWeather: InsertWeatherData): Promise<WeatherData> {
+    const [weather] = await db
+      .insert(weatherData)
+      .values(insertWeather)
+      .onConflictDoUpdate({
+        target: weatherData.location,
+        set: {
+          ...insertWeather,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return weather;
+  }
+
+  async getDiseaseAlerts(location?: string): Promise<DiseaseAlert[]> {
+    if (location) {
+      return await db.select().from(diseaseAlerts).where(eq(diseaseAlerts.location, location));
+    }
+    return await db.select().from(diseaseAlerts);
+  }
+
+  async createDiseaseAlert(insertAlert: InsertDiseaseAlert): Promise<DiseaseAlert> {
+    const [alert] = await db
+      .insert(diseaseAlerts)
+      .values(insertAlert)
+      .returning();
+    return alert;
+  }
+
+  async getAgriStores(location?: string): Promise<AgriStore[]> {
+    if (location) {
+      const stores = await db.select().from(agriStores);
+      return stores.filter((store) => store.location.includes(location));
+    }
+    return await db.select().from(agriStores);
+  }
+
+  async createAgriStore(insertStore: InsertAgriStore): Promise<AgriStore> {
+    const [store] = await db
+      .insert(agriStores)
+      .values(insertStore)
+      .returning();
+    return store;
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -131,10 +266,22 @@ export class MemStorage implements IStorage {
     return this.users.get(id);
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
+  async getUserByEmail(email: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
-      (user) => user.username === username,
+      (user) => user.email === email,
     );
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const id = userData.id || randomUUID();
+    const user: User = { 
+      ...userData, 
+      id,
+      createdAt: userData.id ? (this.users.get(userData.id)?.createdAt || new Date()) : new Date(),
+      updatedAt: new Date()
+    };
+    this.users.set(id, user);
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
@@ -269,4 +416,93 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
+
+// Initialize with sample data for the database
+async function initializeSampleData() {
+  try {
+    // Check if data already exists
+    const existingFarmers = await storage.getAgriStores();
+    if (existingFarmers.length > 0) {
+      console.log('Sample data already exists, skipping initialization');
+      return;
+    }
+
+    console.log('Initializing sample data...');
+    
+    // Create sample farmer
+    const farmer = await storage.createFarmer({
+      name: "Ravi Kumar",
+      location: "Cuttack, Odisha",
+      phone: "+91 9876543210",
+      language: "en",
+      healthScore: 85,
+      achievements: ["early_adopter", "crop_protector", "pest_defender"]
+    });
+
+    // Create sample weather data
+    await storage.createOrUpdateWeatherData({
+      location: "Bhubaneswar, Odisha",
+      temperature: 28,
+      humidity: 65,
+      rainfall: 12,
+      uvIndex: 6,
+      alerts: ["High humidity detected"]
+    });
+
+    // Create sample disease alerts
+    await storage.createDiseaseAlert({
+      disease: "Tomato Blight",
+      location: "Odisha",
+      riskLevel: "high",
+      description: "Reported in 3 nearby farms",
+      reportCount: 3
+    });
+
+    await storage.createDiseaseAlert({
+      disease: "Aphid Infestation",
+      location: "Odisha",
+      riskLevel: "medium",
+      description: "Monitor crops closely",
+      reportCount: 1
+    });
+
+    // Create sample agri stores
+    await storage.createAgriStore({
+      name: "Krishna Agri Store",
+      description: "Seeds, Fertilizers, Pesticides",
+      location: "Bhubaneswar, Odisha",
+      distance: 2.3,
+      rating: 4.5,
+      services: ["Seeds", "Fertilizers", "Pesticides"],
+      contact: "+91 9876543211"
+    });
+
+    await storage.createAgriStore({
+      name: "Village Cooperative",
+      description: "Organic Solutions, Training",
+      location: "Cuttack, Odisha",
+      distance: 1.8,
+      rating: 5.0,
+      services: ["Organic Solutions", "Training"],
+      contact: "+91 9876543212"
+    });
+
+    await storage.createAgriStore({
+      name: "AgriTech Solutions",
+      description: "Modern Equipment, Consultation",
+      location: "Bhubaneswar, Odisha",
+      distance: 4.1,
+      rating: 4.0,
+      services: ["Modern Equipment", "Consultation"],
+      contact: "+91 9876543213"
+    });
+
+    console.log('Sample data initialized successfully');
+  } catch (error) {
+    console.error('Error initializing sample data:', error);
+  }
+}
+
+// Initialize sample data on startup
+initializeSampleData();
