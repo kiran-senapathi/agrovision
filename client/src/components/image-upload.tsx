@@ -102,7 +102,7 @@ export default function ImageUpload({ onDiagnosis }: ImageUploadProps) {
   };
 
   return (
-    <Card data-testid="card-image-upload">
+    <Card data-testid="card-image-upload" id="image-upload-section">
       <CardContent className="p-6">
         <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center">
           <Upload className="text-primary mr-3" size={24} />
