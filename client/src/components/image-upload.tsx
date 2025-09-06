@@ -2,9 +2,10 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, Camera, Folder } from "lucide-react";
+import { Upload, Camera, Folder, X } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { LoadingSpinner, LoadingDots, ProcessingBar } from "@/components/loading-spinner";
 import { type CropDiagnosis } from "@shared/schema";
 
 interface ImageUploadProps {
@@ -14,7 +15,12 @@ interface ImageUploadProps {
 export default function ImageUpload({ onDiagnosis }: ImageUploadProps) {
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
   // Get farmer data for diagnosis
@@ -49,6 +55,11 @@ export default function ImageUpload({ onDiagnosis }: ImageUploadProps) {
       });
       // Invalidate farmer data to refresh profile
       queryClient.invalidateQueries({ queryKey: ['/api/farmers'] });
+      // Clear preview after successful diagnosis
+      setTimeout(() => {
+        setPreviewUrl(null);
+        setSelectedFile(null);
+      }, 3000);
     },
     onError: () => {
       toast({
@@ -62,7 +73,15 @@ export default function ImageUpload({ onDiagnosis }: ImageUploadProps) {
   const handleFileSelect = (file: File) => {
     if (file && file.type.startsWith('image/')) {
       setSelectedFile(file);
-      diagnoseMutation.mutate(file);
+      
+      // Create preview URL
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      
+      // Start diagnosis after a brief delay to show preview
+      setTimeout(() => {
+        diagnoseMutation.mutate(file);
+      }, 500);
     } else {
       toast({
         title: "Invalid File",
@@ -70,6 +89,65 @@ export default function ImageUpload({ onDiagnosis }: ImageUploadProps) {
         variant: "destructive",
       });
     }
+  };
+
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } // Use rear camera on mobile
+      });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        setStream(mediaStream);
+        setIsCameraActive(true);
+      }
+    } catch (error) {
+      console.error('Camera access error:', error);
+      toast({
+        title: "Camera Access Denied",
+        description: "Please allow camera access to take photos of your crops.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      
+      if (context) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0);
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], 'crop-photo.jpg', { type: 'image/jpeg' });
+            handleFileSelect(file);
+            stopCamera();
+          }
+        }, 'image/jpeg', 0.8);
+      }
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setIsCameraActive(false);
+  };
+
+  const clearPreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setSelectedFile(null);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -109,17 +187,71 @@ export default function ImageUpload({ onDiagnosis }: ImageUploadProps) {
           Crop Disease Detection
         </h3>
         
-        <div
-          className={`upload-zone rounded-lg p-8 text-center ${
-            dragOver ? 'bg-primary/5' : ''
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={openFileDialog}
-          data-testid="zone-upload"
-        >
-          <div className="space-y-4">
+        {isCameraActive ? (
+          <div className="camera-interface rounded-lg p-4 bg-black relative">
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              className="w-full h-64 object-cover rounded"
+            />
+            <canvas ref={canvasRef} className="hidden" />
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3">
+              <Button
+                onClick={capturePhoto}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full w-16 h-16"
+                data-testid="button-capture"
+              >
+                <Camera size={24} />
+              </Button>
+              <Button
+                onClick={stopCamera}
+                variant="outline"
+                className="rounded-full w-16 h-16"
+                data-testid="button-cancel-camera"
+              >
+                <X size={24} />
+              </Button>
+            </div>
+          </div>
+        ) : previewUrl ? (
+          <div className="preview-section rounded-lg p-4 bg-muted/30 relative">
+            <img 
+              src={previewUrl} 
+              alt="Crop preview" 
+              className="w-full h-64 object-cover rounded mb-4"
+            />
+            {diagnoseMutation.isPending ? (
+              <div className="text-center py-4">
+                <LoadingSpinner size="lg" text="Analyzing your crop image..." />
+                <ProcessingBar text="AI is examining the plant for diseases" />
+              </div>
+            ) : (
+              <div className="flex justify-center gap-2">
+                <Button
+                  onClick={clearPreview}
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-clear-preview"
+                >
+                  <X className="mr-2" size={16} />
+                  Clear
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div
+            className={`upload-zone rounded-lg p-8 text-center ${
+              dragOver ? 'bg-primary/5' : ''
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={openFileDialog}
+            data-testid="zone-upload"
+          >
+            <div className="space-y-4">
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
               <Upload className="text-primary" size={32} />
             </div>
@@ -132,11 +264,7 @@ export default function ImageUpload({ onDiagnosis }: ImageUploadProps) {
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={(e) => {
                   e.stopPropagation();
-                  // TODO: Implement camera capture
-                  toast({
-                    title: "Camera Feature",
-                    description: "Camera capture will be available soon. Please use file upload.",
-                  });
+                  startCamera();
                 }}
                 disabled={diagnoseMutation.isPending}
                 data-testid="button-take-photo"
@@ -154,8 +282,9 @@ export default function ImageUpload({ onDiagnosis }: ImageUploadProps) {
                 Choose File
               </Button>
             </div>
+            </div>
           </div>
-        </div>
+        )}
 
         <input
           ref={fileInputRef}
@@ -166,14 +295,8 @@ export default function ImageUpload({ onDiagnosis }: ImageUploadProps) {
           data-testid="input-file"
         />
 
-        {diagnoseMutation.isPending && (
-          <div className="mt-4 text-center" data-testid="status-processing">
-            <p className="text-primary">Analyzing your crop image...</p>
-          </div>
-        )}
-
-        {selectedFile && !diagnoseMutation.isPending && (
-          <div className="mt-4 p-3 bg-muted rounded-lg" data-testid="info-file-selected">
+        {!isCameraActive && !previewUrl && selectedFile && !diagnoseMutation.isPending && (
+          <div className="mt-4 p-3 bg-muted rounded-lg fade-in" data-testid="info-file-selected">
             <p className="text-sm text-muted-foreground">Selected: {selectedFile.name}</p>
           </div>
         )}
