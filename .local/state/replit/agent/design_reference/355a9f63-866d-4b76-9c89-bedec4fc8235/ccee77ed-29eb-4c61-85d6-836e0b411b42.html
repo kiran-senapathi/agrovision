@@ -1,0 +1,673 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgroVision - AI Crop Doctor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    popover: {
+                        DEFAULT: "var(--popover)",
+                        foreground: "var(--popover-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                    chart: {
+                        "1": "var(--chart-1)",
+                        "2": "var(--chart-2)",
+                        "3": "var(--chart-3)",
+                        "4": "var(--chart-4)",
+                        "5": "var(--chart-5)",
+                    }
+                },
+                fontFamily: {
+                    sans: ["Inter", "system-ui", "sans-serif"],
+                }
+            },
+        }
+    };
+    </script>
+    <style>
+        :root {
+            --background: hsl(120 20% 97%);
+            --foreground: hsl(120 10% 9%);
+            --card: hsl(120 20% 99%);
+            --card-foreground: hsl(120 10% 15%);
+            --popover: hsl(120 20% 99%);
+            --popover-foreground: hsl(120 95% 9%);
+            --primary: hsl(142 76% 36%);
+            --primary-foreground: hsl(120 20% 99%);
+            --secondary: hsl(30 54% 45%);
+            --secondary-foreground: hsl(120 20% 99%);
+            --muted: hsl(120 10% 95%);
+            --muted-foreground: hsl(120 5% 45%);
+            --accent: hsl(217 91% 60%);
+            --accent-foreground: hsl(120 20% 99%);
+            --destructive: hsl(0 84% 60%);
+            --destructive-foreground: hsl(120 20% 99%);
+            --border: hsl(120 13% 91%);
+            --input: hsl(120 13% 91%);
+            --ring: hsl(142 76% 36%);
+            --radius: 0.5rem;
+            --chart-1: hsl(142 76% 36%);
+            --chart-2: hsl(30 54% 45%);
+            --chart-3: hsl(217 91% 60%);
+            --chart-4: hsl(45 93% 47%);
+            --chart-5: hsl(27 87% 67%);
+        }
+        
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        .scan-button-glow {
+            box-shadow: 0 0 30px hsla(142, 76%, 36%, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .scan-button-glow:hover {
+            box-shadow: 0 0 40px hsla(142, 76%, 36%, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        .weather-gradient {
+            background: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(217 91% 70%) 100%);
+        }
+        
+        .upload-zone {
+            border: 2px dashed hsl(142 76% 36%);
+            transition: all 0.3s ease;
+        }
+        
+        .upload-zone:hover {
+            border-color: hsl(142 76% 28%);
+            background-color: hsl(142 76% 97%);
+        }
+        
+        .notification-dot {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-background text-foreground min-h-screen">
+    <!-- Mobile Navigation -->
+    <nav class="bg-card border-b border-border sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- @COMPONENT: Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                        <i class="fas fa-seedling text-primary-foreground text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-foreground">AgroVision</h1>
+                        <p class="text-xs text-muted-foreground">AI Crop Doctor</p>
+                    </div>
+                </div>
+                <!-- @END_COMPONENT: Logo -->
+
+                <!-- Language Toggle -->
+                <div class="flex items-center space-x-3">
+                    <select class="bg-muted text-muted-foreground rounded-md px-3 py-1 text-sm border border-border">
+                        <option value="en">English</option>
+                        <option value="or">ଓଡ଼ିଆ (Odia)</option>
+                    </select>
+                    <div class="relative">
+                        <i class="fas fa-bell text-muted-foreground text-lg cursor-pointer"></i>
+                        <div class="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full notification-dot"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="bg-gradient-to-br from-primary/5 via-background to-accent/5 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+                    Protect Your Crops with AI
+                </h2>
+                <p class="text-lg text-muted-foreground max-w-2xl mx-auto">
+                    Instantly identify crop diseases, get treatment recommendations, and connect with local agricultural experts.
+                </p>
+            </div>
+
+            <!-- Main Scan Button -->
+            <!-- @COMPONENT: ScanButton -->
+            <div class="flex justify-center mb-8">
+                <button class="scan-button-glow bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 px-12 rounded-2xl text-xl flex items-center space-x-4 transition-all duration-300">
+                    <i class="fas fa-camera text-2xl"></i>
+                    <span>Scan Your Crop</span>
+                </button>
+            </div>
+            <!-- @END_COMPONENT: ScanButton -->
+
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                <div class="bg-card rounded-xl p-6 text-center shadow-sm border border-border">
+                    <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-3">
+                        <i class="fas fa-search text-primary text-xl"></i>
+                    </div>
+                    <h3 class="font-semibold text-foreground mb-2">Instant Diagnosis</h3>
+                    <p class="text-sm text-muted-foreground">Get disease identification in seconds</p>
+                </div>
+                
+                <div class="bg-card rounded-xl p-6 text-center shadow-sm border border-border">
+                    <div class="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mx-auto mb-3">
+                        <i class="fas fa-prescription-bottle-alt text-secondary text-xl"></i>
+                    </div>
+                    <h3 class="font-semibold text-foreground mb-2">Treatment Plans</h3>
+                    <p class="text-sm text-muted-foreground">Organic & chemical solutions</p>
+                </div>
+                
+                <div class="bg-card rounded-xl p-6 text-center shadow-sm border border-border">
+                    <div class="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center mx-auto mb-3">
+                        <i class="fas fa-microphone text-accent text-xl"></i>
+                    </div>
+                    <h3 class="font-semibold text-foreground mb-2">Voice Support</h3>
+                    <p class="text-sm text-muted-foreground">Available in Odia & English</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dashboard Content -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- Main Content Area -->
+                <div class="lg:col-span-2 space-y-8">
+                    
+                    <!-- Upload Interface -->
+                    <!-- @COMPONENT: ImageUpload -->
+                    <div class="bg-card rounded-xl p-6 shadow-sm border border-border">
+                        <h3 class="text-xl font-semibold text-foreground mb-4 flex items-center">
+                            <i class="fas fa-upload text-primary mr-3"></i>
+                            Crop Disease Detection
+                        </h3>
+                        
+                        <div class="upload-zone rounded-lg p-8 text-center">
+                            <div class="space-y-4">
+                                <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                                    <i class="fas fa-cloud-upload-alt text-primary text-2xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-lg font-medium text-foreground">Upload Crop Image</h4>
+                                    <p class="text-muted-foreground">Drag and drop or click to select</p>
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                                    <button class="bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors">
+                                        <i class="fas fa-camera mr-2"></i>Take Photo
+                                    </button>
+                                    <button class="bg-secondary text-secondary-foreground px-6 py-2 rounded-lg hover:bg-secondary/90 transition-colors">
+                                        <i class="fas fa-folder mr-2"></i>Choose File
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Sample Result (Mock) -->
+                        <div class="mt-6 p-4 bg-muted/50 rounded-lg border border-border" data-mock="true">
+                            <div class="flex items-start space-x-4">
+                                <!-- A close-up of tomato leaves showing early blight disease symptoms -->
+                                <img src="https://pixabay.com/get/g56eb09d30ba1a3610d6ca13130bbb7e181db8e59b5f072337dde800e621ae06dd35b87f31f214d976d57d5aaef90fa9c7f1cf2f9a491cb60c0087f881a246024_1280.jpg" 
+                                     alt="Tomato plant with disease symptoms" 
+                                     class="w-20 h-20 rounded-lg object-cover" data-mock-image="true">
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-foreground mb-2">Early Blight Detected</h4>
+                                    <div class="flex items-center mb-2">
+                                        <span class="text-sm text-muted-foreground mr-2">Severity:</span>
+                                        <div class="bg-destructive/20 text-destructive px-2 py-1 rounded text-xs">Moderate</div>
+                                    </div>
+                                    <p class="text-sm text-muted-foreground">Fungal infection affecting tomato leaves. Immediate treatment recommended.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: ImageUpload -->
+
+                    <!-- Treatment Recommendations -->
+                    <!-- @COMPONENT: TreatmentRecommendations -->
+                    <div class="bg-card rounded-xl p-6 shadow-sm border border-border">
+                        <h3 class="text-xl font-semibold text-foreground mb-4 flex items-center">
+                            <i class="fas fa-prescription-bottle-alt text-secondary mr-3"></i>
+                            Treatment Recommendations
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <!-- Organic Treatment -->
+                            <div class="bg-chart-4/10 border border-chart-4/20 rounded-lg p-4">
+                                <h4 class="font-medium text-foreground mb-2 flex items-center">
+                                    <i class="fas fa-leaf text-chart-4 mr-2"></i>
+                                    Organic Treatment
+                                </h4>
+                                <ul class="text-sm text-muted-foreground space-y-1">
+                                    <li>• Apply neem oil spray every 7 days</li>
+                                    <li>• Remove affected leaves immediately</li>
+                                    <li>• Improve air circulation around plants</li>
+                                </ul>
+                            </div>
+                            
+                            <!-- Chemical Treatment -->
+                            <div class="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                                <h4 class="font-medium text-foreground mb-2 flex items-center">
+                                    <i class="fas fa-flask text-destructive mr-2"></i>
+                                    Chemical Treatment
+                                </h4>
+                                <ul class="text-sm text-muted-foreground space-y-1">
+                                    <li>• Copper-based fungicide application</li>
+                                    <li>• Follow manufacturer's dosage instructions</li>
+                                    <li>• Apply during cool morning hours</li>
+                                </ul>
+                            </div>
+                            
+                            <!-- Prevention -->
+                            <div class="bg-accent/10 border border-accent/20 rounded-lg p-4">
+                                <h4 class="font-medium text-foreground mb-2 flex items-center">
+                                    <i class="fas fa-shield-alt text-accent mr-2"></i>
+                                    Prevention Tips
+                                </h4>
+                                <ul class="text-sm text-muted-foreground space-y-1">
+                                    <li>• Maintain proper spacing between plants</li>
+                                    <li>• Water at soil level, avoid wetting leaves</li>
+                                    <li>• Regular field monitoring</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: TreatmentRecommendations -->
+
+                    <!-- Voice Assistant -->
+                    <!-- @COMPONENT: VoiceAssistant -->
+                    <div class="bg-card rounded-xl p-6 shadow-sm border border-border">
+                        <h3 class="text-xl font-semibold text-foreground mb-4 flex items-center">
+                            <i class="fas fa-microphone text-accent mr-3"></i>
+                            Voice Assistant
+                        </h3>
+                        
+                        <div class="text-center space-y-4">
+                            <div class="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mx-auto cursor-pointer hover:bg-accent/20 transition-colors">
+                                <i class="fas fa-microphone text-accent text-3xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-muted-foreground mb-2">Tap to speak in Odia or English</p>
+                                <button class="bg-accent text-accent-foreground px-6 py-2 rounded-lg hover:bg-accent/90 transition-colors">
+                                    Start Conversation
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Mock conversation -->
+                        <div class="mt-6 space-y-3" data-mock="true">
+                            <div class="bg-muted rounded-lg p-3">
+                                <p class="text-sm text-muted-foreground">🎤 "ମୋର ଟମାଟୋ ଗଛରେ କଣ ସମସ୍ୟା?" (What's wrong with my tomato plant?)</p>
+                            </div>
+                            <div class="bg-primary/10 rounded-lg p-3">
+                                <p class="text-sm text-foreground">🤖 Early blight detected. Apply neem oil spray and remove affected leaves. ନିମ୍ ତେଲ ସ୍ପ୍ରେ କରନ୍ତୁ।</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: VoiceAssistant -->
+                </div>
+
+                <!-- Sidebar -->
+                <div class="space-y-6">
+                    
+                    <!-- Weather Card -->
+                    <!-- @COMPONENT: WeatherCard -->
+                    <div class="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+                        <div class="weather-gradient p-4 text-white">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="font-semibold text-lg">Today's Weather</h3>
+                                    <p class="text-sm opacity-90" data-bind="location.name">Bhubaneswar, Odisha</p>
+                                </div>
+                                <i class="fas fa-cloud-sun text-3xl"></i>
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm text-muted-foreground">Temperature</p>
+                                    <p class="text-xl font-semibold text-foreground" data-bind="weather.temperature">28°C</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-muted-foreground">Humidity</p>
+                                    <p class="text-xl font-semibold text-foreground" data-bind="weather.humidity">65%</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-muted-foreground">Rainfall</p>
+                                    <p class="text-xl font-semibold text-foreground" data-bind="weather.rainfall">12mm</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-muted-foreground">UV Index</p>
+                                    <p class="text-xl font-semibold text-foreground" data-bind="weather.uvIndex">6</p>
+                                </div>
+                            </div>
+                            <div class="mt-4 p-3 bg-accent/10 rounded-lg">
+                                <p class="text-sm text-accent font-medium">⚠️ High humidity detected</p>
+                                <p class="text-xs text-muted-foreground">Increased risk of fungal infections</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: WeatherCard -->
+
+                    <!-- Disease Alerts -->
+                    <!-- @COMPONENT: DiseaseAlerts -->
+                    <div class="bg-card rounded-xl p-4 shadow-sm border border-border">
+                        <h3 class="font-semibold text-foreground mb-3 flex items-center">
+                            <i class="fas fa-exclamation-triangle text-chart-4 mr-2"></i>
+                            Disease Alerts
+                        </h3>
+                        <div class="space-y-3">
+                            <div class="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                                <div class="flex items-center justify-between mb-1">
+                                    <h4 class="font-medium text-sm text-foreground">Tomato Blight</h4>
+                                    <span class="text-xs text-destructive">High Risk</span>
+                                </div>
+                                <p class="text-xs text-muted-foreground">Reported in 3 nearby farms</p>
+                            </div>
+                            <div class="bg-chart-4/10 border border-chart-4/20 rounded-lg p-3">
+                                <div class="flex items-center justify-between mb-1">
+                                    <h4 class="font-medium text-sm text-foreground">Aphid Infestation</h4>
+                                    <span class="text-xs text-chart-4">Medium Risk</span>
+                                </div>
+                                <p class="text-xs text-muted-foreground">Monitor crops closely</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: DiseaseAlerts -->
+
+                    <!-- Farmer Profile -->
+                    <!-- @COMPONENT: FarmerProfile -->
+                    <div class="bg-card rounded-xl p-4 shadow-sm border border-border">
+                        <h3 class="font-semibold text-foreground mb-3 flex items-center">
+                            <i class="fas fa-user-circle text-primary mr-2"></i>
+                            Farmer Profile
+                        </h3>
+                        <div class="text-center space-y-3">
+                            <!-- A portrait of a smiling Indian farmer in agricultural field -->
+                            <img src="https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100" 
+                                 alt="Farmer profile picture" 
+                                 class="w-16 h-16 rounded-full mx-auto object-cover" data-mock-image="true">
+                            <div>
+                                <h4 class="font-medium text-foreground" data-bind="farmer.name">Ravi Kumar</h4>
+                                <p class="text-sm text-muted-foreground" data-bind="farmer.location">Cuttack, Odisha</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Gamification Elements -->
+                        <div class="mt-4 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Health Score</span>
+                                <span class="text-sm font-medium text-primary">85/100</span>
+                            </div>
+                            <div class="w-full bg-muted rounded-full h-2">
+                                <div class="bg-primary h-2 rounded-full" style="width: 85%"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Badges -->
+                        <div class="mt-4">
+                            <p class="text-sm font-medium text-foreground mb-2">Achievements</p>
+                            <div class="flex space-x-2">
+                                <div class="w-8 h-8 bg-chart-4/20 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-medal text-chart-4 text-sm"></i>
+                                </div>
+                                <div class="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-shield-alt text-primary text-sm"></i>
+                                </div>
+                                <div class="w-8 h-8 bg-accent/20 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-star text-accent text-sm"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: FarmerProfile -->
+
+                    <!-- Quick Actions -->
+                    <!-- @COMPONENT: QuickActions -->
+                    <div class="bg-card rounded-xl p-4 shadow-sm border border-border">
+                        <h3 class="font-semibold text-foreground mb-3">Quick Actions</h3>
+                        <div class="space-y-2">
+                            <button class="w-full bg-muted hover:bg-muted/80 text-foreground p-3 rounded-lg text-sm flex items-center transition-colors">
+                                <i class="fas fa-store text-secondary mr-3"></i>
+                                Find Nearby Stores
+                            </button>
+                            <button class="w-full bg-muted hover:bg-muted/80 text-foreground p-3 rounded-lg text-sm flex items-center transition-colors">
+                                <i class="fas fa-history text-accent mr-3"></i>
+                                View Scan History
+                            </button>
+                            <button class="w-full bg-muted hover:bg-muted/80 text-foreground p-3 rounded-lg text-sm flex items-center transition-colors">
+                                <i class="fas fa-question-circle text-chart-4 mr-3"></i>
+                                Help & Support
+                            </button>
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: QuickActions -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Marketplace Section -->
+    <section class="py-12 bg-muted/30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold text-foreground mb-4">Agricultural Marketplace</h2>
+                <p class="text-muted-foreground">Find trusted suppliers and agricultural stores near you</p>
+            </div>
+
+            <!-- @COMPONENT: MarketplaceGrid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Store 1 -->
+                <div class="bg-card rounded-xl p-6 shadow-sm border border-border hover:shadow-md transition-shadow">
+                    <!-- A modern agricultural store with farming equipment and supplies -->
+                    <img src="https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200" 
+                         alt="Agricultural supply store" 
+                         class="w-full h-32 object-cover rounded-lg mb-4">
+                    <h3 class="font-semibold text-foreground mb-2" data-mock="true">Krishna Agri Store</h3>
+                    <p class="text-sm text-muted-foreground mb-2" data-mock="true">Seeds, Fertilizers, Pesticides</p>
+                    <div class="flex items-center text-sm text-muted-foreground mb-3">
+                        <i class="fas fa-map-marker-alt mr-2 text-primary"></i>
+                        <span data-mock="true">2.3 km away</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex text-chart-4">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star-half-alt"></i>
+                        </div>
+                        <button class="bg-primary text-primary-foreground px-4 py-1 rounded-lg text-sm hover:bg-primary/90">
+                            Contact
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Store 2 -->
+                <div class="bg-card rounded-xl p-6 shadow-sm border border-border hover:shadow-md transition-shadow">
+                    <!-- A rural agricultural cooperative store with farmers gathering -->
+                    <img src="https://pixabay.com/get/g57b99c38c5c2584dc9e358d1443eeafda3b3ab4c4c0204605e7124a7729994ed62ff9971f206036657e534317802d82f0d87f8dd442e5f6393ae3b4879ca2656_1280.jpg" 
+                         alt="Agricultural cooperative" 
+                         class="w-full h-32 object-cover rounded-lg mb-4">
+                    <h3 class="font-semibold text-foreground mb-2" data-mock="true">Village Cooperative</h3>
+                    <p class="text-sm text-muted-foreground mb-2" data-mock="true">Organic Solutions, Training</p>
+                    <div class="flex items-center text-sm text-muted-foreground mb-3">
+                        <i class="fas fa-map-marker-alt mr-2 text-primary"></i>
+                        <span data-mock="true">1.8 km away</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex text-chart-4">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <button class="bg-primary text-primary-foreground px-4 py-1 rounded-lg text-sm hover:bg-primary/90">
+                            Contact
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Store 3 -->
+                <div class="bg-card rounded-xl p-6 shadow-sm border border-border hover:shadow-md transition-shadow">
+                    <!-- A modern agricultural technology center with equipment -->
+                    <img src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200" 
+                         alt="Agricultural technology center" 
+                         class="w-full h-32 object-cover rounded-lg mb-4">
+                    <h3 class="font-semibold text-foreground mb-2" data-mock="true">AgriTech Solutions</h3>
+                    <p class="text-sm text-muted-foreground mb-2" data-mock="true">Modern Equipment, Consultation</p>
+                    <div class="flex items-center text-sm text-muted-foreground mb-3">
+                        <i class="fas fa-map-marker-alt mr-2 text-primary"></i>
+                        <span data-mock="true">4.1 km away</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex text-chart-4">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="far fa-star"></i>
+                        </div>
+                        <button class="bg-primary text-primary-foreground px-4 py-1 rounded-lg text-sm hover:bg-primary/90">
+                            Contact
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: MarketplaceGrid -->
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-card border-t border-border py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <div class="flex items-center justify-center space-x-3 mb-4">
+                    <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                        <i class="fas fa-seedling text-primary-foreground"></i>
+                    </div>
+                    <span class="text-lg font-bold text-foreground">AgroVision</span>
+                </div>
+                <p class="text-sm text-muted-foreground mb-4">Empowering farmers with AI-powered crop disease detection</p>
+                <div class="flex justify-center space-x-6 text-sm text-muted-foreground">
+                    <a href="#" class="hover:text-primary transition-colors">Privacy Policy</a>
+                    <a href="#" class="hover:text-primary transition-colors">Terms of Service</a>
+                    <a href="#" class="hover:text-primary transition-colors">Support</a>
+                    <a href="#" class="hover:text-primary transition-colors">About</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // TODO: Implement real functionality for:
+        // - Image upload and processing
+        // - AI disease detection API calls
+        // - Voice recording and speech recognition
+        // - Weather data fetching
+        // - Geolocation for nearby stores
+        // - Push notifications for disease alerts
+        // - User authentication and profile management
+        
+        (function() {
+            // Mock interactions for demonstration
+            const scanButton = document.querySelector('.scan-button-glow');
+            const uploadZone = document.querySelector('.upload-zone');
+            const voiceButton = document.querySelector('.upload-zone + div .bg-accent\\/10');
+            
+            if (scanButton) {
+                scanButton.addEventListener('click', function() {
+                    // TODO: Implement camera/file picker
+                    console.log('Scan button clicked - open camera/file picker');
+                });
+            }
+            
+            if (uploadZone) {
+                uploadZone.addEventListener('click', function() {
+                    // TODO: Implement file upload
+                    console.log('Upload zone clicked - open file dialog');
+                });
+                
+                uploadZone.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.style.backgroundColor = 'hsl(142 76% 95%)';
+                });
+                
+                uploadZone.addEventListener('dragleave', function() {
+                    this.style.backgroundColor = '';
+                });
+                
+                uploadZone.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.style.backgroundColor = '';
+                    // TODO: Handle dropped files
+                    console.log('Files dropped', e.dataTransfer.files);
+                });
+            }
+            
+            // Language switcher
+            const languageSelect = document.querySelector('select');
+            if (languageSelect) {
+                languageSelect.addEventListener('change', function() {
+                    // TODO: Implement language switching
+                    console.log('Language changed to:', this.value);
+                });
+            }
+            
+            // Quick action buttons
+            const quickActionButtons = document.querySelectorAll('.space-y-2 button');
+            quickActionButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // TODO: Implement respective actions
+                    console.log('Quick action clicked:', this.textContent.trim());
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
