@@ -1,0 +1,123 @@
+🌱 Hackathon Project: AgroVision – AI Crop Doctor for Farmers
+🚨 Problem Statement
+
+Farmers in Odisha and other agrarian regions face huge losses every year because:
+
+They can’t identify crop diseases early.
+
+Agricultural experts are expensive and not accessible in rural areas.
+
+Farmers lack resources in their local language (Odia).
+
+🌾 1 in 6 crops in India is lost to pests or diseases — reducing farmer income and food security.
+
+💡 Solution: AgroVision
+
+A mobile-first AI-powered crop doctor that empowers farmers to protect their crops:
+
+📸 Snap & Diagnose: Farmer clicks a photo of the crop → AI model detects diseases instantly.
+
+🧑‍🌾 Cure Suggestions: Shows treatment recommendations (organic & chemical options, prevention tips).
+
+🎙️ Voice-enabled in Odia: Farmers can talk to the app and get responses in Odia (or English).
+
+🏪 Marketplace Integration: Suggests nearby agri-stores/cooperatives for solutions.
+
+🔔 Smart Alerts: Sends weather + disease outbreak warnings based on local data.
+
+🚀 Core Features for Hackathon MVP
+
+✅ Upload crop image → AI classification
+✅ Disease detection & treatment suggestion
+✅ Multilingual chatbot (Odia/English voice support)
+✅ Offline mode (last 3 diagnoses cached)
+✅ Gamified farmer profile (earn badges for crop health)
+
+⚙️ Detailed Tech Stack
+🔮 Frontend (UI/UX – “Amazing” Experience)
+
+Framework: React Native (cross-platform: Android + iOS)
+
+UI Library: Tailwind CSS + NativeWind
+
+Animations: Framer Motion for React Native
+
+Design System: Neumorphic cards + gradient backgrounds for a modern, friendly farm vibe
+
+Navigation: React Navigation
+
+Charting: Recharts / Victory Native (disease trends, crop health over time)
+
+⚡ Backend & APIs
+
+Framework: FastAPI (Python, lightweight, async)
+
+Database: Firebase Firestore (real-time sync) or Supabase (Postgres + auth)
+
+Authentication: Firebase Auth (with phone number login for rural accessibility)
+
+Storage: Firebase Cloud Storage (for images)
+
+Notifications: Firebase Cloud Messaging (disease/weather alerts)
+
+🧠 AI/ML Layer
+
+Model: PlantVillage Dataset (pre-trained CNN / MobileNet / ResNet for leaf disease detection)
+
+Frameworks: PyTorch → converted to TorchScript or TensorFlow Lite (for mobile inference)
+
+Edge AI: TensorFlow Lite for offline use (basic diagnosis without internet)
+
+Future Scope: Federated Learning → improves model as more farmers use app
+
+🗣️ Voice & Language Support
+
+Speech-to-Text: OpenAI Whisper API (handles Odia & English)
+
+Text-to-Speech: Google Cloud TTS or Coqui TTS for Odia
+
+Chat Layer: LangChain for conversational flow
+
+🌍 Maps & Location
+
+Maps API: Google Maps / Mapbox for nearest agri-store lookup
+
+Weather API: OpenWeatherMap for weather + pest outbreak prediction
+
+🎨 UI/UX Design Plan (Amazing, Judge-Friendly)
+
+👉 The app must feel friendly, simple, and farmer-first.
+
+Screens:
+
+Onboarding:
+
+Simple illustrations of farmers
+
+Language select (Odia/English)
+
+Home Dashboard:
+
+Big “Scan Crop” button (primary action)
+
+Weather card with rainfall/temp prediction
+
+Alerts section (e.g., “⚠️ Tomato blight reported nearby”)
+
+Scan & Diagnose Screen:
+
+Upload/Camera option → AI loading animation (fun & farm-themed, e.g., “Checking your crop health 🌱…”)
+
+Output → Disease name, severity meter, treatment suggestions
+
+Voice Chatbot Screen:
+
+Farmer can speak in Odia → AI replies with Odia TTS
+
+Neumorphic mic button with glow animation
+
+Profile & Marketplace:
+
+Shows farmer’s crop history, badges earned (gamification)
+
+Nearby stores & cooperatives listed on a map
