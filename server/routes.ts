@@ -162,42 +162,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Voice assistant endpoint (mock)
+  // Voice assistant endpoint using Gemini AI
   app.post("/api/voice/process", async (req, res) => {
     try {
       const { text, language } = req.body;
       
-      // Mock voice processing - in real implementation, this would use speech recognition and NLP
-      const mockResponses = {
-        "disease": {
-          "en": "I can help you identify crop diseases. Please upload a photo of your affected crop.",
-          "or": "ମୁଁ ଆପଣଙ୍କର ଫସଲର ରୋଗ ଚିହ୍ନଟ କରିବାରେ ସାହାଯ୍ୟ କରିପାରେ। ଦୟାକରି ପ୍ରଭାବିତ ଫସଲର ଫଟୋ ଅପଲୋଡ଼ କରନ୍ତୁ।"
-        },
-        "treatment": {
-          "en": "For early blight, apply neem oil spray every 7 days and remove affected leaves.",
-          "or": "ପ୍ରାରମ୍ଭିକ ଅଗ୍ନିଦଗ୍ଧ ପାଇଁ, ପ୍ରତି ୭ ଦିନରେ ନିମ୍ ତେଲ ସ୍ପ୍ରେ କରନ୍ତୁ ଏବଂ ପ୍ରଭାବିତ ପତ୍ରଗୁଡିକ ହଟାନ୍ତୁ।"
-        },
-        "weather": {
-          "en": "Current weather shows high humidity. Monitor your crops for fungal infections.",
-          "or": "ବର୍ତ୍ତମାନ ପାଗରେ ଅଧିକ ଆର୍ଦ୍ରତା ଦେଖାଯାଉଛି। ଫଙ୍ଗସ୍ ସଂକ୍ରମଣ ପାଇଁ ଆପଣଙ୍କର ଫସଲଗୁଡିକୁ ଦେଖନ୍ତୁ।"
-        }
-      };
-
-      let responseKey = "disease"; // default
-      if (text?.toLowerCase().includes("treatment") || text?.toLowerCase().includes("cure")) {
-        responseKey = "treatment";
-      } else if (text?.toLowerCase().includes("weather") || text?.toLowerCase().includes("rain")) {
-        responseKey = "weather";
+      if (!text || text.trim().length === 0) {
+        return res.status(400).json({ message: "No text provided for processing" });
       }
 
-      const response = mockResponses[responseKey as keyof typeof mockResponses][language as keyof typeof mockResponses.disease] || mockResponses.disease.en;
+      // Import the Gemini service
+      const { processVoiceQuery } = await import("./gemini");
       
-      res.json({ 
-        response,
-        language,
-        processedText: text 
-      });
+      const aiResponse = await processVoiceQuery(text, language);
+      res.json(aiResponse);
+      
     } catch (error) {
+      console.error("Voice processing error:", error);
       res.status(500).json({ message: "Failed to process voice input" });
     }
   });
