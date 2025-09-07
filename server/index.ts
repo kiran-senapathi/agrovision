@@ -1,4 +1,10 @@
+<<<<<<< HEAD
 import 'dotenv/config'; // ✅ Load environment variables first
+=======
+// ✅ Load .env variables before anything else
+import 'dotenv/config';
+
+>>>>>>> 9fa8f9c281d4d370b737ce75747bf70574789484
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -55,6 +61,7 @@ app.use((req, res, next) => {
       serveStatic(app);
     }
 
+<<<<<<< HEAD
     // Start HTTP server (Windows-safe)
     const port = parseInt(process.env.PORT || '5000', 10);
     server.listen(port, "0.0.0.0", () => {
@@ -65,4 +72,19 @@ app.use((req, res, next) => {
     console.error("Failed to start server:", error);
     process.exit(1);
   }
+=======
+  // Only setup Vite in development mode
+  if (app.get("env") === "development") {
+    await setupVite(app, server);
+  } else {
+    serveStatic(app);
+  }
+
+  // Always serve the app on the port specified in PORT (default 5000)
+  const port = parseInt(process.env.PORT || "5000", 10);
+  server.listen(port, "localhost", () => {
+  log(`🚀 Server running at http://localhost:${port}`);
+});
+
+>>>>>>> 9fa8f9c281d4d370b737ce75747bf70574789484
 })();
